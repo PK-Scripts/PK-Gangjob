@@ -362,6 +362,129 @@ function OpenKledingKast()
 	end
 end
 
+function HasHandsupOrIsCuffed(ped)
+	if (IsEntityPlayingAnim(ped, 'random@mugging3', 'handsup_standing_base', 3)) or IsEntityPlayingAnim(ped, 'mp_arresting', 'idle', 3) or IsEntityPlayingAnim(ped, 'missminuteman_1ig_2', 'handsup_base', 3) then return true end
+	return false
+end
+
+function OpenActionMenu(gang)
+	ESX.UI.Menu.CloseAll()
+
+	ESX.UI.Menu.Open('default', GetCurrentResourceName(), gang..'_actions', {
+		title    = gang,
+		align    = 'top-left',
+		elements = {
+			{label = _U('citizen_interaction'), value = 'citizen_interaction'},
+	}}, function(data, menu)
+		if data.current.value == 'citizen_interaction' then
+			local elements = {
+				{label = _U('search'), value = 'search'},
+				{label = _U('handcuff'), value = 'handcuff'},
+				{label = _U('drag'), value = 'drag'},
+				{label = _U('put_in_vehicle'), value = 'put_in_vehicle'},
+				{label = _U('out_the_vehicle'), value = 'out_the_vehicle'},
+			}
+
+			if Config.EnableLicenses then
+				table.insert(elements, {label = _U('license_check'), value = 'license'})
+			end
+
+			ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'citizen_interaction', {
+				title    = _U('citizen_interaction'),
+				align    = 'top-left',
+				elements = elements
+			}, function(data2, menu2)
+				local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
+				if closestPlayer ~= -1 and closestDistance <= 3.0 then
+					local action = data2.current.value
+
+					if action == 'search' then
+						if HasHandsupOrIsCuffed(GetPlayerPed(closestPlayer)) then
+							if closestDistance <= 1 then
+								OpenBodySearchMenu(closestPlayer)
+							end
+						end
+					elseif action == 'handcuff' then	
+						if HasHandsupOrIsCuffed(GetPlayerPed(closestPlayer)) then
+							if closestDistance <= 1 then
+								TriggerServerEvent('esx_policejob:handcuff', GetPlayerServerId(closestPlayer))
+							end
+						end
+					elseif action == 'drag' then
+						TriggerServerEvent('esx_policejob:drag', GetPlayerServerId(closestPlayer))
+					elseif action == 'put_in_vehicle' then
+						TriggerServerEvent('esx_policejob:putInVehicle', GetPlayerServerId(closestPlayer))
+					elseif action == 'out_the_vehicle' then
+						TriggerServerEvent('esx_policejob:OutVehicle', GetPlayerServerId(closestPlayer))
+					end
+				else
+					ESX.ShowNotification(_U('no_players_nearby'))
+				end
+			end, function(data2, menu2)
+				menu2.close()
+			end)
+		end
+	end, function(data, menu)
+		menu.close()
+	end)
+end
+
+function OpenBodySearchMenu(player)
+	ESX.TriggerServerCallback('pk-gangjob:krijgAndereInventory', function(data)
+		local elements = {}
+
+		for i=1, #data.accounts, 1 do
+			if data.accounts[i].name == 'black_money' and data.accounts[i].money > 0 then
+				table.insert(elements, {
+					label    = _U('confiscate_dirty', ESX.Math.Round(data.accounts[i].money)),
+					value    = 'black_money',
+					itemType = 'item_account',
+					amount   = data.accounts[i].money
+				})
+
+				break
+			end
+		end
+
+		table.insert(elements, {label = _U('guns_label')})
+
+		for i=1, #data.weapons, 1 do
+			table.insert(elements, {
+				label    = _U('confiscate_weapon', ESX.GetWeaponLabel(data.weapons[i].name), data.weapons[i].ammo),
+				value    = data.weapons[i].name,
+				itemType = 'item_weapon',
+				amount   = data.weapons[i].ammo
+			})
+		end
+
+		table.insert(elements, {label = _U('inventory_label')})
+
+		for i=1, #data.inventory, 1 do
+			if data.inventory[i].count > 0 then
+				table.insert(elements, {
+					label    = _U('confiscate_inv', data.inventory[i].count, data.inventory[i].label),
+					value    = data.inventory[i].name,
+					itemType = 'item_standard',
+					amount   = data.inventory[i].count
+				})
+			end
+		end
+
+		ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'body_search', {
+			title    = _U('search'),
+			align    = 'top-left',
+			elements = elements
+		}, function(data, menu)
+			if data.current.value then
+				TriggerServerEvent('pk-gangjob:pakSpelerItem', GetPlayerServerId(player), data.current.itemType, data.current.value, data.current.amount)
+				menu.close()
+			end
+		end, function(data, menu)
+			menu.close()
+		end)
+	end, GetPlayerServerId(player))
+end
+
 Citizen.CreateThread(function()
 	while true do
 		if Gangs ~= nil and isLoggedIn then
@@ -386,7 +509,9 @@ Citizen.CreateThread(function()
 					local DistanceBetweenWapenKluis = GetDistanceBetweenCoords(pos, xwapenkluis,ywapenkluis,zwapenkluis, true)
 					local xdeletepoint,ydeletepoint,zdeletepoint = tonumber(garage.deletepoint.x),tonumber(garage.deletepoint.y),tonumber(garage.deletepoint.z)
 					local DistanceBetweenGarageDeletePoint = GetDistanceBetweenCoords(pos, xdeletepoint,ydeletepoint,zdeletepoint, true)
-
+					if IsControlJustPressed(0, Keys["F6"]) then
+						OpenActionMenu(v.gang)
+					end
 					if DistanceBetweenGarage < 2.5 or DistanceBetweenKluis < 2.5 or DistanceBetweenKledingKast < 2.5 or DistanceBetweenWapenKluis < 2.5 or DistanceBetweenGarageDeletePoint < 2.5 then
 						if DistanceBetweenGarage < 2.5 and not IsPedInVehicle(GetPlayerPed(-1), veh) then
 							DrawText3Ds(xgarage,ygarage,zgarage, '~b~E~w~ - Gang Garage')
