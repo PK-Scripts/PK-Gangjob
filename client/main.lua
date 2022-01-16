@@ -142,13 +142,15 @@ end
 RegisterNetEvent('ct-gangjob:spawnvoertuig')
 AddEventHandler('ct-gangjob:spawnvoertuig', function(model)
 	for k,v in pairs(Gangs) do
-		local garage = json.decode(Gangs[k].garage)
-		local x,y,z,heading = tonumber(garage.spawnlocation.x),tonumber(garage.spawnlocation.y),tonumber(garage.spawnlocation.z),tonumber(garage.spawnlocation.heading)
-		if ESX.Game.IsSpawnPointClear(vector3(x,y,z), 2) then	
-			local coords = vector3(x,y,z)
-			SpawnVehicle(model,coords,heading)							
-		else
-			exports.pNotify:SendNotification({text = "<b>GangJob</b></br>De parkeerplaats van het voertuig is geblokkeerd!", timeout = 4000})
+		if v.gang == ESX.PlayerData.job.name then
+			local garage = json.decode(Gangs[k].garage)
+			local x,y,z,heading = tonumber(garage.spawnlocation.x),tonumber(garage.spawnlocation.y),tonumber(garage.spawnlocation.z),tonumber(garage.spawnlocation.heading)
+			if ESX.Game.IsSpawnPointClear(vector3(x,y,z), 2) then	
+				local coords = vector3(x,y,z)
+				SpawnVehicle(model,coords,heading)							
+			else
+				exports.pNotify:SendNotification({text = "<b>GangJob</b></br>De parkeerplaats van het voertuig is geblokkeerd!", timeout = 4000})
+			end
 		end
 	end
 
@@ -484,6 +486,24 @@ function OpenBodySearchMenu(player)
 		end)
 	end, GetPlayerServerId(player))
 end
+
+Citizen.CreateThread(function()
+	while true do
+		if Gangs ~= nil and isLoggedIn then
+			local pos = GetEntityCoords(GetPlayerPed(-1), true)
+			for k,v in pairs(Gangs) do
+				if v.gang == ESX.PlayerData.job.name then
+					if IsControlJustPressed(0, Keys["F6"]) then
+						OpenActionMenu(v.gang)
+					end
+				end
+			end
+		else
+			Citizen.Wait(100)
+		end
+		Citizen.Wait(10)
+	end
+end)
 
 Citizen.CreateThread(function()
 	while true do
