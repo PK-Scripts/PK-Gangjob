@@ -529,9 +529,6 @@ Citizen.CreateThread(function()
 					local DistanceBetweenWapenKluis = GetDistanceBetweenCoords(pos, xwapenkluis,ywapenkluis,zwapenkluis, true)
 					local xdeletepoint,ydeletepoint,zdeletepoint = tonumber(garage.deletepoint.x),tonumber(garage.deletepoint.y),tonumber(garage.deletepoint.z)
 					local DistanceBetweenGarageDeletePoint = GetDistanceBetweenCoords(pos, xdeletepoint,ydeletepoint,zdeletepoint, true)
-					if IsControlJustPressed(0, Keys["F6"]) then
-						OpenActionMenu(v.gang)
-					end
 					if DistanceBetweenGarage < 2.5 or DistanceBetweenKluis < 2.5 or DistanceBetweenKledingKast < 2.5 or DistanceBetweenWapenKluis < 2.5 or DistanceBetweenGarageDeletePoint < 2.5 then
 						if DistanceBetweenGarage < 2.5 and not IsPedInVehicle(GetPlayerPed(-1), veh) then
 							DrawText3Ds(xgarage,ygarage,zgarage, '~b~E~w~ - Gang Garage')
